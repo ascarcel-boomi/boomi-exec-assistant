@@ -1,0 +1,24 @@
+name: Mirror to Bitbucket
+
+on:
+  push:
+    branches: ["**"]
+  delete:
+    branches: ["**"]
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history required for mirror push
+
+      - name: Push mirror to Bitbucket
+        env:
+          BITBUCKET_USERNAME: ${{ secrets.BITBUCKET_USERNAME }}
+          BITBUCKET_APP_PASSWORD: ${{ secrets.BITBUCKET_APP_PASSWORD }}
+        run: |
+          git remote add bitbucket \
+            https://${BITBUCKET_USERNAME}:${BITBUCKET_APP_PASSWORD}@bitbucket.org/boomii/boomi-exec-assistant.git
+          git push bitbucket --mirror
