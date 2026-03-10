@@ -1,0 +1,24 @@
+# Boomi Executive Assistant — User Configuration
+# No secrets in this file. OAuth token lives in tokens/ (gitignored).
+
+email: adam.scarcella@boomi.com
+display_name: Adam Scarcella
+timezone: America/New_York
+
+# Schedule
+morning_brief_time: "07:30"       # HH:MM in user's timezone
+eod_digest_time: "17:30"          # HH:MM in user's timezone
+email_triage_interval_minutes: 60
+pre_meeting_lookback_minutes: 15  # fire brief this many minutes before meeting start
+
+# Data limits (tune for Claude token budget)
+max_emails_per_triage: 50
+calendar_lookahead_hours: 24
+
+# Delivery
+deliver_to_email: true      # sends results to self via Gmail
+deliver_to_stdout: true     # also prints to terminal
+
+# Working hours — triage and pre-meeting only fire within these hours
+working_hours_start: "07:00"
+working_hours_end: "19:00"

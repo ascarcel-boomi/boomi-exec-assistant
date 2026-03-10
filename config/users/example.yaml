@@ -1,0 +1,25 @@
+# Boomi Executive Assistant — User Configuration Template
+# Copy this file to config/users/<firstname>.<lastname>.yaml and fill in your details.
+# No secrets go in this file. Your OAuth token is saved to tokens/ (gitignored).
+
+email: firstname.lastname@boomi.com
+display_name: First Last
+timezone: America/New_York          # See: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+
+# Schedule
+morning_brief_time: "07:30"       # HH:MM in your timezone
+eod_digest_time: "17:30"          # HH:MM in your timezone
+email_triage_interval_minutes: 60  # how often to scan inbox (minutes)
+pre_meeting_lookback_minutes: 15   # send meeting brief this many minutes before start
+
+# Data limits
+max_emails_per_triage: 50
+calendar_lookahead_hours: 24
+
+# Delivery
+deliver_to_email: true      # sends results to yourself via Gmail
+deliver_to_stdout: true     # also prints to terminal / log
+
+# Working hours — triage and pre-meeting only fire within these hours
+working_hours_start: "07:00"
+working_hours_end: "19:00"
