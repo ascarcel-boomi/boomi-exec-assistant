@@ -29,4 +29,5 @@ jobs:
       - name: Push mirror to Bitbucket
         run: |
           git remote add bitbucket git@bitbucket.org:boomii/boomi-exec-assistant.git
-          git push bitbucket --mirror
+          git push bitbucket --all
+          git push bitbucket --tags
