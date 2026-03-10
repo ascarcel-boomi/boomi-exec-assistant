@@ -35,6 +35,22 @@ def check_secrets():
     print("✅  client_secrets.json found.")
 
 
+def _find_jira_token() -> str:
+    """Try to find an existing JIRA_API_TOKEN from known credential locations."""
+    token = os.environ.get("JIRA_API_TOKEN", "")
+    if token:
+        return token
+    for cred_file in [
+        os.path.expanduser("~/.kiro/mcp_credentials/mcp-atlassian.env"),
+        os.path.expanduser("~/.amazonq/mcp_credentials/mcp-atlassian.env"),
+    ]:
+        if os.path.exists(cred_file):
+            for line in open(cred_file).readlines():
+                if line.startswith("JIRA_API_TOKEN="):
+                    return line.split("=", 1)[1].strip()
+    return ""
+
+
 def interactive_config(email: str) -> dict:
     print(f"\n[2/4] Creating user config for {email}")
     name_default = " ".join(p.capitalize() for p in email.split("@")[0].split("."))
@@ -44,6 +60,34 @@ def interactive_config(email: str) -> dict:
     eod = prompt("  EOD digest time (HH:MM)", "17:30")
     interval = prompt("  Email triage interval (minutes)", "60")
     deliver_email = prompt("  Deliver results to your Gmail inbox? (y/n)", "y").lower() == "y"
+
+    print("\n  [Jira — enables daily ticket brief]")
+    jira_token = _find_jira_token()
+    if jira_token:
+        print(f"  ✅  Jira API token found automatically")
+    else:
+        print("  Create a token at: https://id.atlassian.com/manage-profile/security/api-tokens")
+        print("  Choose 'Create API token with scopes' and select Jira Read scopes.")
+        jira_token = input("  Paste Jira API token (or Enter to skip): ").strip()
+
+    jira_base_url = ""
+    jira_project_keys = []
+    if jira_token:
+        if jira_token and "JIRA_API_TOKEN" not in os.environ:
+            # Persist to shell profile so daemon picks it up
+            zshrc = os.path.expanduser("~/.zshrc")
+            try:
+                content = open(zshrc).read() if os.path.exists(zshrc) else ""
+                if "JIRA_API_TOKEN" not in content:
+                    with open(zshrc, "a") as f:
+                        f.write(f'\nexport JIRA_API_TOKEN="{jira_token}"\n')
+                    print("  Saved JIRA_API_TOKEN to ~/.zshrc")
+            except Exception:
+                pass
+
+        jira_base_url = prompt("  Jira base URL", "https://boomii.atlassian.net")
+        keys_input = prompt("  Jira project keys (comma-separated)", "CAMSRE,SRE")
+        jira_project_keys = [k.strip() for k in keys_input.split(",") if k.strip()]
 
     return {
         "email": email,
@@ -59,6 +103,8 @@ def interactive_config(email: str) -> dict:
         "deliver_to_stdout": True,
         "working_hours_start": "07:00",
         "working_hours_end": "19:00",
+        "jira_base_url": jira_base_url,
+        "jira_project_keys": jira_project_keys,
     }
 
 
@@ -89,6 +135,27 @@ def smoke_test(email: str, creds):
         print("  ✅  Calendar: OK")
     except Exception as e:
         print(f"  ❌  Calendar: {e}")
+
+    jira_token = os.environ.get("JIRA_API_TOKEN") or _find_jira_token()
+    if jira_token:
+        try:
+            from ea.jira import JiraClient
+            jira = JiraClient("https://boomii.atlassian.net", email)
+            import requests
+            resp = requests.post(
+                "https://boomii.atlassian.net/rest/api/3/myself",
+                auth=(email, jira_token),
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                display = resp.json().get("displayName", email)
+                print(f"  ✅  Jira: OK (logged in as {display})")
+            else:
+                print(f"  ⚠️   Jira: token found but auth returned {resp.status_code}")
+        except Exception as e:
+            print(f"  ❌  Jira: {e}")
+    else:
+        print("  ⚠️   Jira: JIRA_API_TOKEN not set — daily ticket brief will be skipped")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if api_key:

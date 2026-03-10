@@ -47,22 +47,28 @@ This confirms Google auth and Claude API are both working. If it prints a mornin
 
 ## How the Installer Works (what to do if it fails)
 
-The installer (`install.sh`) runs 7 steps:
+The installer (`install.sh`) runs 8 steps:
 
 1. **Python check** — requires Python 3.9+. If missing: `brew install python3`
 2. **Repo check** — must already be cloned to `~/github/boomi-exec-assistant`
 3. **Venv + deps** — creates `.venv/` and installs `requirements.txt`
 4. **User config** — writes `config/users/<firstname>.<lastname>.yaml` with schedule and timezone
-5. **Google auth** — tries these sources in order:
+5. **Jira integration** — enables the daily ticket brief:
+   - Auto-discovers `JIRA_API_TOKEN` from `~/.kiro/mcp_credentials/mcp-atlassian.env` or `~/.amazonq/mcp_credentials/mcp-atlassian.env`
+   - Prompts for token if not found (skippable — brief is disabled until token is set)
+   - Saves token to `~/.zshrc` and to the launchd plist environment
+   - Prompts for Jira base URL (default: `https://boomii.atlassian.net`) and project keys (default: `CAMSRE,SRE`)
+   - Appends Jira config block to user YAML
+6. **Google auth** — tries these sources in order:
    - Copy existing MCP token from `~/.google_workspace_mcp/credentials/<email>.json` (preferred — no browser needed)
    - Run full OAuth flow using `config/client_secrets.json`
    - If neither exists: prompt user to get `client_secrets.json` from adam.scarcella@boomi.com
-6. **Anthropic API key** — tries these sources in order:
+7. **Anthropic API key** — tries these sources in order:
    - macOS Keychain: `security find-generic-password -s "Claude Code" -w` (works if Claude Code CLI is installed)
    - `$ANTHROPIC_API_KEY` environment variable
    - Prompts the user to paste their key (get it from 1Password or IT)
    - Saves to `~/.zshrc` for future sessions
-7. **launchd service** — writes `~/Library/LaunchAgents/com.boomi.exec-assistant.plist` and loads it
+8. **launchd service** — writes `~/Library/LaunchAgents/com.boomi.exec-assistant.plist` and loads it
 
 ---
 
@@ -98,6 +104,43 @@ launchctl unload ~/Library/LaunchAgents/com.boomi.exec-assistant.plist
 launchctl load ~/Library/LaunchAgents/com.boomi.exec-assistant.plist
 launchctl list | grep exec-assistant   # verify PID appears
 ```
+
+### Jira daily ticket brief not appearing
+The brief fires at your `morning_brief_time` only if `JIRA_API_TOKEN` is set and `jira_base_url` is in your user config.
+
+**Check token:**
+```bash
+echo $JIRA_API_TOKEN   # must be non-empty in the daemon environment
+```
+If empty, the token may not be in the plist. Fix:
+```bash
+launchctl unload ~/Library/LaunchAgents/com.boomi.exec-assistant.plist
+# Edit the plist: set JIRA_API_TOKEN value in EnvironmentVariables dict
+launchctl load ~/Library/LaunchAgents/com.boomi.exec-assistant.plist
+```
+
+**Check config:**
+```bash
+grep jira ~/github/boomi-exec-assistant/config/users/<name>.yaml
+# Should show jira_base_url and jira_project_keys
+```
+If missing, add to your YAML:
+```yaml
+jira_base_url: "https://boomii.atlassian.net"
+jira_project_keys:
+  - "CAMSRE"
+  - "SRE"
+```
+
+**Test it manually:**
+```bash
+cd ~/github/boomi-exec-assistant && source .venv/bin/activate
+python3 cli.py --email you@boomi.com --task daily_ticket_brief --dry-run
+```
+
+**Get a Jira token:** https://id.atlassian.com/manage-profile/security/api-tokens — choose "Create API token with scopes" and select Jira Read scopes.
+
+---
 
 ### Missing client_secrets.json (only needed if no MCP token)
 Get the file from adam.scarcella@boomi.com and place it at:
@@ -145,6 +188,7 @@ python3 cli.py --email you@boomi.com --task eod_digest         # send to inbox
 | Task | When | What It Does |
 |---|---|---|
 | `morning_brief` | Daily at configured time (default 7:30 AM) | Today's calendar + overnight emails + action items → email |
+| `daily_ticket_brief` | Daily at morning_brief_time (requires `JIRA_API_TOKEN`) | Prioritized Jira work plan: in-progress, overdue, sprint to-do, unplanned queue → email |
 | `email_triage` | Every 60 min during working hours | Inbox P1/P2/P3 prioritization + reply suggestions → email |
 | `pre_meeting_brief` | 15 min before each calendar event | Attendee context + related email threads + talking points → email |
 | `action_tracker` | Noon + 30 min before EOD | Extract commitments/follow-ups from emails and meetings → email |
