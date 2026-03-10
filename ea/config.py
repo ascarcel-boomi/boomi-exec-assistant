@@ -30,6 +30,9 @@ class UserConfig:
     deliver_to_stdout: bool
     working_hours_start: str
     working_hours_end: str
+    # Jira — optional, enables daily ticket brief
+    jira_base_url: str
+    jira_project_keys: List[str]
 
 
 def _config_path(email: str) -> pathlib.Path:
@@ -67,6 +70,8 @@ def load_user_config(email: str) -> UserConfig:
         deliver_to_stdout=bool(data.get("deliver_to_stdout", True)),
         working_hours_start=data.get("working_hours_start", "07:00"),
         working_hours_end=data.get("working_hours_end", "19:00"),
+        jira_base_url=data.get("jira_base_url", ""),
+        jira_project_keys=data.get("jira_project_keys", []),
     )
 
 

@@ -177,6 +177,36 @@ Return a JSON array (no markdown, just valid JSON). Each item:
 Only include concrete, actionable items. Skip vague items like "let's discuss later" unless there's a real date. Return [] if nothing actionable found."""
         return system, user
 
+    # ── Task 6: Daily Ticket Brief ──────────────────────────────────────────
+
+    def daily_ticket_brief_prompt(self, cfg, tickets_text: str, now_str: str) -> Tuple[str, str]:
+        system = self._system(cfg, now_str)
+        user = f"""Build a strategic daily ticket plan for {cfg.display_name}.
+
+## OPEN JIRA TICKETS (assigned to {cfg.display_name})
+
+{tickets_text}
+
+Create a focused daily ticket brief using only the sections that apply. Omit any section with no relevant tickets.
+
+**Focus Now** — The 1–3 tickets to start on first today. Be specific about why each one is the priority (e.g. overdue, blocking others, sprint at risk, SLA concern). One action sentence per ticket.
+
+**Sprint Commitments** — In-sprint stories. Is the sprint on track? Flag anything at risk of not completing. If everything looks fine, one sentence is enough.
+
+**Unplanned Queue** — Operational Requests, Troubleshooting Requests, and Access Requests. Order by urgency. Call out anything that looks time-sensitive or SLA-bound.
+
+**Blocked / Needs Input** — Tickets that can't move forward without action from someone else. What exactly is needed and from whom?
+
+**Defer** — Tickets that can safely wait until tomorrow or later. One line each.
+
+Formatting rules:
+- Every ticket must be a markdown link: [TICKET-KEY](url)
+- Be prescriptive — tell {cfg.display_name} exactly what to do, not just what to think about
+- When sprint work and unplanned work compete, favor clearing the unplanned queue first unless the sprint is at risk
+- Keep the total brief under 500 words
+- Start directly with the first section — no preamble"""
+        return system, user
+
     # ── Task 5: EOD Digest ───────────────────────────────────────────────────
 
     def eod_digest_prompt(

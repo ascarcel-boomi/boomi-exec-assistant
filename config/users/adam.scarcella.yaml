@@ -22,3 +22,9 @@ deliver_to_stdout: true     # also prints to terminal
 # Working hours — triage and pre-meeting only fire within these hours
 working_hours_start: "07:00"
 working_hours_end: "19:00"
+
+# Jira — enables daily ticket brief (JIRA_API_TOKEN must be set in environment)
+jira_base_url: "https://boomii.atlassian.net"
+jira_project_keys:
+  - "CAMSRE"
+  - "SRE"
