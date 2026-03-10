@@ -15,6 +15,7 @@ from ea import tasks
 from ea.config import load_user_config, list_configured_users
 from ea.context import build_user_context
 from ea.tasks import morning_brief, email_triage, pre_meeting_brief, action_tracker, eod_digest
+from ea.tasks import claude_usage_report
 
 logging.basicConfig(
     level=logging.INFO,
@@ -114,6 +115,29 @@ def build_scheduler(emails: list, dry_run: bool = False) -> BlockingScheduler:
             args=[eod_digest.run, cfg, ctx, dry_run],
             id=f"eod_digest_{email}",
             name=f"EOD Digest [{email}]",
+            misfire_grace_time=300,
+        )
+
+        # Task 6: Claude Usage — daily morning (5 min after morning brief)
+        usage_h, usage_m = h, (m + 5) % 60
+        if m + 5 >= 60:
+            usage_h = (h + 1) % 24
+        scheduler.add_job(
+            _guarded_run,
+            CronTrigger(hour=usage_h, minute=usage_m, timezone=tz),
+            args=[claude_usage_report.run_daily, cfg, ctx, dry_run],
+            id=f"claude_usage_daily_{email}",
+            name=f"Claude Usage Daily [{email}]",
+            misfire_grace_time=300,
+        )
+
+        # Task 7: Claude Usage — weekly Friday EOD summary
+        scheduler.add_job(
+            _guarded_run,
+            CronTrigger(day_of_week="fri", hour=eod_h, minute=eod_m, timezone=tz),
+            args=[claude_usage_report.run_weekly, cfg, ctx, dry_run],
+            id=f"claude_usage_weekly_{email}",
+            name=f"Claude Usage Weekly [{email}]",
             misfire_grace_time=300,
         )
 

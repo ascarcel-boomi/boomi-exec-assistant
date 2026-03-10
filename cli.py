@@ -15,6 +15,7 @@ import sys
 from ea.config import load_user_config
 from ea.context import build_user_context
 from ea.tasks import morning_brief, email_triage, pre_meeting_brief, action_tracker, eod_digest
+from ea.tasks import claude_usage_report
 
 TASK_MAP = {
     "morning_brief": morning_brief.run,
@@ -22,6 +23,8 @@ TASK_MAP = {
     "pre_meeting_brief": pre_meeting_brief.run,
     "action_tracker": action_tracker.run,
     "eod_digest": eod_digest.run,
+    "claude_usage_daily": claude_usage_report.run_daily,
+    "claude_usage_weekly": claude_usage_report.run_weekly,
 }
 
 
