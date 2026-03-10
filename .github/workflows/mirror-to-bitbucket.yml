@@ -16,9 +16,8 @@ jobs:
 
       - name: Push mirror to Bitbucket
         env:
-          BITBUCKET_USERNAME: ${{ secrets.BITBUCKET_USERNAME }}
-          BITBUCKET_APP_PASSWORD: ${{ secrets.BITBUCKET_APP_PASSWORD }}
+          BITBUCKET_API_TOKEN: ${{ secrets.BITBUCKET_API_TOKEN }}
         run: |
           git remote add bitbucket \
-            https://${BITBUCKET_USERNAME}:${BITBUCKET_APP_PASSWORD}@bitbucket.org/boomii/boomi-exec-assistant.git
+            https://x-token-auth:${BITBUCKET_API_TOKEN}@bitbucket.org/boomii/boomi-exec-assistant.git
           git push bitbucket --mirror
