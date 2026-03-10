@@ -6,6 +6,30 @@ Built with Claude AI (Anthropic) and designed for the Boomi management team. Eac
 
 ---
 
+## Quick Install (Claude Code CLI)
+
+If you have [Claude Code](https://claude.ai/code) installed, just open it in any directory and say:
+
+```
+Download and install this boomi-exec-assistant https://github.com/ascarcel-boomi/boomi-exec-assistant
+```
+
+Claude will clone the repo, install dependencies, configure your Google auth, set up your Anthropic API key, and install the macOS background service — no manual steps required.
+
+---
+
+## Manual Install
+
+```bash
+git clone https://github.com/ascarcel-boomi/boomi-exec-assistant ~/github/boomi-exec-assistant
+cd ~/github/boomi-exec-assistant
+bash install.sh --email your.name@boomi.com
+```
+
+The installer handles everything: Python venv, dependencies, Google OAuth, Anthropic API key, and the launchd background service that starts automatically on login.
+
+---
+
 ## What It Does
 
 | Task | Schedule | Description |
