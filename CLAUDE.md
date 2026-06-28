@@ -24,7 +24,7 @@ cd ~/github/boomi-exec-assistant
 bash install.sh --email <their-boomi-email>
 ```
 
-If you don't know their email, check `git config user.email` or ask them once. The installer handles everything: Python venv, dependencies, user config (interactive prompts), Google auth, Anthropic API key, and the launchd background service.
+If you don't know their email, check `git config user.email` or ask them once. The installer handles everything: Python venv, dependencies, user config (interactive prompts), Google auth, and the launchd background service. Claude calls are delegated to the user's `claude` CLI (Enterprise License), so no Anthropic API key is required — `claude` must be installed and authenticated.
 
 ### Step 3 — Verify it's running
 
@@ -63,12 +63,8 @@ The installer (`install.sh`) runs 8 steps:
    - Copy existing MCP token from `~/.google_workspace_mcp/credentials/<email>.json` (preferred — no browser needed)
    - Run full OAuth flow using `config/client_secrets.json`
    - If neither exists: prompt user to get `client_secrets.json` from adam.scarcella@boomi.com
-7. **Anthropic API key** — tries these sources in order:
-   - macOS Keychain: `security find-generic-password -s "Claude Code" -w` (works if Claude Code CLI is installed)
-   - `$ANTHROPIC_API_KEY` environment variable
-   - Prompts the user to paste their key (get it from 1Password or IT)
-   - Saves to `~/.zshrc` for future sessions
-8. **launchd service** — writes `~/Library/LaunchAgents/com.boomi.exec-assistant.plist` and loads it
+7. **Claude CLI check** — verifies `claude --version` runs. The daemon shells out to `claude -p` for every model call, which uses the user's existing Enterprise License (OAuth credentials in `~/.claude/`). No API key needed. If `claude` is missing, installer points the user at `https://docs.claude.com/claude-code`.
+8. **launchd service** — writes `~/Library/LaunchAgents/com.boomi.exec-assistant.plist` and loads it. The plist sets `PATH` so `claude` resolves under launchd's minimal environment.
 
 ---
 
@@ -85,15 +81,18 @@ rm ~/github/boomi-exec-assistant/tokens/<email>.json
 cp ~/.google_workspace_mcp/credentials/<email>.json ~/github/boomi-exec-assistant/tokens/<email>.json
 ```
 
-### No Anthropic API key
+### Claude CLI auth issue
+The daemon calls `claude -p` for every model invocation. If those fail, verify:
 ```bash
-security find-generic-password -s "Claude Code" -w   # check Claude Code keychain
-# If empty, ask IT for the key associated with: claude_code_key_<firstname>.<lastname>_<suffix>
-# Then add to shell:
-echo 'export ANTHROPIC_API_KEY="sk-ant-..."' >> ~/.zshrc
-# And update the plist:
-launchctl unload ~/Library/LaunchAgents/com.boomi.exec-assistant.plist
-# Edit the plist to update ANTHROPIC_API_KEY value, then:
+claude --version                       # must print a version
+echo "ping" | claude -p --model claude-sonnet-4-6 --output-format text   # must return text
+ls ~/.claude/                          # Enterprise OAuth tokens live here
+```
+If `claude` itself can't authenticate, fix that first (`claude` interactive run, or re-login via your Enterprise SSO). The daemon does not store or refresh any Anthropic credentials — it relies entirely on whatever `claude` is configured to use.
+
+The plist's `PATH` entry must include the directory containing `claude` (typically `~/.local/bin`). If it doesn't, edit `~/Library/LaunchAgents/com.boomi.exec-assistant.plist` and reload:
+```bash
+launchctl unload ~/Library/LaunchAgents/com.boomi.exec-assistant.plist && \
 launchctl load ~/Library/LaunchAgents/com.boomi.exec-assistant.plist
 ```
 

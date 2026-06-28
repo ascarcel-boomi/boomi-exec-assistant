@@ -1,12 +1,18 @@
-"""Claude AI client and prompt builders for each EA task."""
+"""Claude AI client and prompt builders for each EA task.
+
+The client shells out to the `claude` CLI in print mode so it uses the
+user's Enterprise License credentials (OAuth in ~/.claude/) rather than
+a standalone ANTHROPIC_API_KEY. cwd is pinned to /tmp so the daemon
+doesn't pick up project-local CLAUDE.md context on every call.
+"""
 
 import json
+import subprocess
 from typing import Dict, List, Optional, Tuple
-
-import anthropic
 
 MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 4096
+CLI_TIMEOUT_SECONDS = 180
 
 EA_PERSONA = """You are an expert executive assistant for {display_name} ({email}) at Boomi, \
 a B2B integration software company. You are precise, concise, and professional. \
@@ -57,17 +63,30 @@ def _format_emails(emails: list, max_per: int = 300) -> str:
 
 
 class ClaudeClient:
-    def __init__(self, api_key: str):
-        self.client = anthropic.Anthropic(api_key=api_key)
+    def __init__(self):
+        pass
 
     def complete(self, system: str, user: str, max_tokens: int = MAX_TOKENS) -> str:
-        message = self.client.messages.create(
-            model=MODEL,
-            max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": user}],
+        result = subprocess.run(
+            [
+                "claude",
+                "--print",
+                "--model", MODEL,
+                "--system-prompt", system,
+                "--output-format", "text",
+                "--no-session-persistence",
+            ],
+            input=user,
+            capture_output=True,
+            text=True,
+            timeout=CLI_TIMEOUT_SECONDS,
+            cwd="/tmp",
         )
-        return message.content[0].text
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"claude CLI exited {result.returncode}: {result.stderr.strip()}"
+            )
+        return result.stdout.strip()
 
     def _system(self, cfg, now_str: str) -> str:
         return EA_PERSONA.format(
